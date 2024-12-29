@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "cleaning-service"
+version = "0.1.0"
+description = ""
+authors = ["alexander <alfacat187@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["standard"], version = "^0.115.6"}
+pydantic-settings = "^2.7.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+mypy = "^1.14.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
