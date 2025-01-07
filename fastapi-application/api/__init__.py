@@ -1,3 +1,5 @@
+__all__ = ("router",)
+
 from fastapi import APIRouter
 
 from core.config import settings

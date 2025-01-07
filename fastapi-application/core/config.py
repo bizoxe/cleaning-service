@@ -29,10 +29,20 @@ class ApiBaseConfig(BaseModel):
     prefix: str = "/api"
     environment: str = "dev"
     v1: ApiV1Prefix = ApiV1Prefix()
+    cors_origins: list[str] = ["*"]
+    cors_allow_credentials: bool = True
+    cors_allow_methods: list[str] = [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+    ]
+    cors_allow_headers: list[str] = ["*"]
 
 
 class DataBaseConfig(BaseModel):
     url: PostgresDsn
+    test_db_url: PostgresDsn
     echo: bool = False
     echo_pool: bool = False
     pool_size: int = 50

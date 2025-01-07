@@ -1,11 +1,10 @@
 import uvicorn
 
 from api import router as main_api_router
-from create_fastapi_app import create_app
+from server.create_fastapi_app import app
 from core.config import settings
 
 
-app = create_app()
 app.include_router(
     main_api_router,
 )
