@@ -15,6 +15,12 @@ async def lifespan(_app: FastAPI):
     await db_helper.dispose()
 
 
+def _init_router(_app: FastAPI) -> None:
+    from api import router
+
+    _app.include_router(router)
+
+
 def _init_middleware(_app: FastAPI) -> None:
     _app.add_middleware(
         CORSMiddleware,
@@ -32,9 +38,7 @@ def create_app() -> FastAPI:
         version=settings.api.version,
         lifespan=lifespan,
     )
+    _init_router(_app)
     _init_middleware(_app)
 
     return _app
-
-
-app = create_app()
