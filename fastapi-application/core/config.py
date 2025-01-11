@@ -5,6 +5,7 @@ Main application settings.
 from pydantic import (
     BaseModel,
     PostgresDsn,
+    computed_field,
 )
 from pydantic_settings import (
     BaseSettings,
@@ -41,12 +42,16 @@ class ApiBaseConfig(BaseModel):
 
 
 class DataBaseConfig(BaseModel):
-    url: PostgresDsn
-    test_db_url: PostgresDsn
     echo: bool = False
     echo_pool: bool = False
     pool_size: int = 50
     max_overflow: int = 10
+
+    postgres_host: str
+    postgres_port: int
+    postgres_user: str
+    postgres_pwd: str
+    postgres_db: str
 
     naming_convention: dict[str, str] = {
         "ix": "ix_%(column_0_label)s",
@@ -55,6 +60,18 @@ class DataBaseConfig(BaseModel):
         "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
         "pk": "pk_%(table_name)s",
     }
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def postgres_connection_string(self) -> str:
+        return PostgresDsn.build(
+            scheme="postgresql+asyncpg",
+            host=self.postgres_host,
+            port=self.postgres_port,
+            username=self.postgres_user,
+            password=self.postgres_pwd,
+            path=self.postgres_db,
+        ).unicode_string()
 
 
 class Settings(BaseSettings):

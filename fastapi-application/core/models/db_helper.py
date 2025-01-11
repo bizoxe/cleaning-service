@@ -53,7 +53,7 @@ class DataBaseHelper:
 
 
 db_helper = DataBaseHelper(
-    url=str(settings.db.url),
+    url=settings.db.postgres_connection_string,
     echo=settings.db.echo,
     echo_pool=settings.db.echo_pool,
     pool_size=settings.db.pool_size,
