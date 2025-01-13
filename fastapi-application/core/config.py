@@ -2,6 +2,8 @@
 Main application settings.
 """
 
+from pathlib import Path
+
 from pydantic import (
     BaseModel,
     PostgresDsn,
@@ -11,6 +13,9 @@ from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
 )
+
+
+BASE_DIR = Path(__file__).parent.parent
 
 
 class RunConfig(BaseModel):
@@ -61,7 +66,7 @@ class DataBaseConfig(BaseModel):
         "pk": "pk_%(table_name)s",
     }
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore
     @property
     def postgres_connection_string(self) -> str:
         return PostgresDsn.build(
@@ -74,6 +79,14 @@ class DataBaseConfig(BaseModel):
         ).unicode_string()
 
 
+class AuthJWT(BaseModel):
+    private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
+    public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
+    algorithm: str = "RS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 30
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env.template", ".env"),
@@ -84,6 +97,7 @@ class Settings(BaseSettings):
     run: RunConfig = RunConfig()
     api: ApiBaseConfig = ApiBaseConfig()
     db: DataBaseConfig
+    auth_jwt: AuthJWT = AuthJWT()
 
 
 settings = Settings()
