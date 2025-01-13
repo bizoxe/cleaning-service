@@ -43,4 +43,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("cleanings", "updated_at")
     op.drop_column("cleanings", "created_at")
-
