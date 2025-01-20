@@ -3,6 +3,7 @@ This module contains a helper class for interacting with the database.
 """
 
 from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -21,6 +22,7 @@ class DataBaseHelper:
         url: str,
         echo: bool,
         echo_pool: bool,
+        pool_pre_ping: bool,
         pool_size: int,
         max_overflow: int,
     ) -> None:
@@ -28,6 +30,7 @@ class DataBaseHelper:
             url=url,
             echo=echo,
             echo_pool=echo_pool,
+            pool_pre_ping=pool_pre_ping,
             pool_size=pool_size,
             max_overflow=max_overflow,
         )
@@ -51,11 +54,21 @@ class DataBaseHelper:
         async with self.session_factory() as session:
             yield session
 
+    @asynccontextmanager
+    async def get_ctx_async_session(self) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Context manager that creates an async session and
+        yields it for use in a 'with' statement.
+        """
+        async with self.session_factory() as session:
+            yield session
+
 
 db_helper = DataBaseHelper(
     url=settings.db.postgres_connection_string,
     echo=settings.db.echo,
     echo_pool=settings.db.echo_pool,
+    pool_pre_ping=settings.db.pool_pre_ping,
     pool_size=settings.db.pool_size,
     max_overflow=settings.db.max_overflow,
 )
