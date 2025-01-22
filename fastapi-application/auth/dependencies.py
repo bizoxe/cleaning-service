@@ -42,7 +42,7 @@ async def get_user_by_token_sub(
         session: The database session.
 
     Returns:
-        User (pydantic model object): The user object.
+        UserAuthSchema (pydantic model object): The user object.
     """
     if user := await users_crud.get_user_by_id(session=session, user_id=user_id):
         return user
@@ -65,7 +65,7 @@ async def get_current_auth_user_for_refresh(
         session: The database session.
 
     Returns:
-        User (pydantic model object): The user object.
+       UserAuthSchema (pydantic model object): The user object.
     """
     try:
         token_data = TokenDataRefresh(**payload)
@@ -95,7 +95,7 @@ async def get_current_auth_user(
         payload: Payload from Bearer-token.
 
     Returns:
-        User (pydantic model object): The user object.
+        UserAuthSchema (pydantic model object): The user object.
     """
     if security_scopes.scopes:
         authenticate_value = f"Bearer scope='{security_scopes.scope_str}'"
