@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     PostgresDsn,
     computed_field,
+    EmailStr,
 )
 from pydantic_settings import (
     BaseSettings,
@@ -25,6 +26,7 @@ class RunConfig(BaseModel):
 
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
+    auth: str = "/auth"
     users: str = "/users"
     cleanings: str = "/cleanings"
 
@@ -49,6 +51,7 @@ class ApiBaseConfig(BaseModel):
 class DataBaseConfig(BaseModel):
     echo: bool = False
     echo_pool: bool = False
+    pool_pre_ping: bool = True
     pool_size: int = 50
     max_overflow: int = 10
 
@@ -87,6 +90,13 @@ class AuthJWT(BaseModel):
     refresh_token_expire_days: int = 30
 
 
+class RolesConfig(BaseModel):
+    admin_email: EmailStr
+    editor_email: EmailStr
+    admin_pwd: str
+    editor_pwd: str
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env.template", ".env"),
@@ -98,6 +108,7 @@ class Settings(BaseSettings):
     api: ApiBaseConfig = ApiBaseConfig()
     db: DataBaseConfig
     auth_jwt: AuthJWT = AuthJWT()
+    roles: RolesConfig
 
 
 settings = Settings()
