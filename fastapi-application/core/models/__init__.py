@@ -11,3 +11,4 @@ from api.api_v1.users.models import (
     Role,
     Permission,
 )
+from api.api_v1.profiles.models import Profile

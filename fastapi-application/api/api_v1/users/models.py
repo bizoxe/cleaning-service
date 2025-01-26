@@ -48,6 +48,7 @@ class User(Base):
         server_default=text("1"),
     )
     role = relationship("Role", back_populates="users", lazy="selectin")
+    profile = relationship("Profile", lazy="selectin")
 
     def __repr__(self) -> str:
         return (
