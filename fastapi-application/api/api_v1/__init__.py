@@ -8,6 +8,7 @@ from api.api_v1.users import (
     users_router,
 )
 from api.api_v1.cleanings import cleanings_router
+from api.api_v1.profiles import profiles_router
 
 
 router = APIRouter(
@@ -24,4 +25,8 @@ router.include_router(
 router.include_router(
     cleanings_router,
     prefix=settings.api.v1.cleanings,
+)
+router.include_router(
+    profiles_router,
+    prefix=settings.api.v1.profiles,
 )

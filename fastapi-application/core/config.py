@@ -29,6 +29,7 @@ class ApiV1Prefix(BaseModel):
     auth: str = "/auth"
     users: str = "/users"
     cleanings: str = "/cleanings"
+    profiles: str = "/profiles"
 
 
 class ApiBaseConfig(BaseModel):
