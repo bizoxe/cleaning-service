@@ -24,8 +24,8 @@ from api.api_v1.users.jwt_helpers import create_access_token
 async def create_fake_role_and_permission(connection_test) -> None:
     user_role = Role(id=1, name="UserAuth")
     read_permission = Permission(name="read")
-    self_edit_permission = Permission(name="self_edit")
-    user_role.permissions.extend([read_permission, self_edit_permission])
+    modify_permission = Permission(name="modify")
+    user_role.permissions.extend([read_permission, modify_permission])
     async with session_manager.session() as session:
         session.add(user_role)
         await session.commit()

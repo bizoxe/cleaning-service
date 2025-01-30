@@ -94,7 +94,7 @@ async def get_user_auth_self_profile(
 )
 async def update_user_auth_self_profile(
     user_in: Annotated[
-        UserAuthSchema, Security(get_current_active_auth_user, scopes=["self_edit"])
+        UserAuthSchema, Security(get_current_active_auth_user, scopes=["modify"])
     ],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
     update_profile: ProfileUpdate,

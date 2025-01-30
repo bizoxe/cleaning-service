@@ -31,15 +31,15 @@ async def seed_roles_and_permissions() -> None:
     admin_role = Role(id=3, name="Admin")
 
     read_permission = Permission(name="read")
-    self_edit_permission = Permission(name="self_edit")
+    modify_permission = Permission(name="modify")
     write_permission = Permission(name="write")
     delete_permission = Permission(name="delete")
 
     admin_role.permissions.extend(
-        [read_permission, self_edit_permission, write_permission, delete_permission]
+        [read_permission, modify_permission, write_permission, delete_permission]
     )
     editor_role.permissions.extend([read_permission, write_permission])
-    user_role.permissions.extend([read_permission, self_edit_permission])
+    user_role.permissions.extend([read_permission, modify_permission])
     async with async_session() as session:
         result = await session.execute(select(Role))
         roles_already_created = result.scalars().all()

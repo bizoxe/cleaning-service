@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 SCOPES = MappingProxyType(
     {
         "read": "Permission to read information",
-        "self_edit": "Permission to edit information about yourself",
+        "modify": "Permission to modify self information",
         "write": "Permission to edit information",
         "delete": "Permission to delete information",
     }
