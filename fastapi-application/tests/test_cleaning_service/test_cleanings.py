@@ -195,7 +195,7 @@ class TestCleaningsCreate:
         assert cleaning_resp.price == cleaning_schema.price
         assert cleaning_resp.description == cleaning_schema.description
         assert cleaning_resp.cleaning_type == cleaning_schema.cleaning_type
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status_code
 
     @pytest.mark.parametrize(
         "payload, status_code",
@@ -240,7 +240,7 @@ class TestCleaningsCreate:
             app.url_path_for("cleanings:create-cleaning"),
             json=payload,
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status_code
 
 
 class TestCleaningsGetByID:
@@ -330,7 +330,8 @@ class TestCleaningsDeleteByID:
     ) -> None:
         response = await authorized_client.delete(
             app.url_path_for(
-                "cleanings:delete-cleaning", cleaning_id=create_fake_cleaning.id
+                "cleanings:delete-cleaning",
+                cleaning_id=create_fake_cleaning.id,
             )
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
