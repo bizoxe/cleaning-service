@@ -1,6 +1,7 @@
 import pytest_asyncio
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 
 from api.api_v1.users.models import (
     Role,
@@ -18,6 +19,12 @@ from api.api_v1.users.schemas import (
 from auth.utils.auth_utils import hash_password
 from api.api_v1.users.models import User
 from api.api_v1.users.jwt_helpers import create_access_token
+from api.api_v1.profiles.schemas import (
+    ProfileCreate,
+    ProfileInDB,
+    ProfilePublic,
+)
+from api.api_v1.profiles.models import Profile
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -72,3 +79,45 @@ def authorized_client(
     }
 
     return client
+
+
+@pytest_asyncio.fixture(scope="function")
+async def create_fake_profile(
+    create_fake_user: UserAuthSchema,
+) -> ProfilePublic:
+    async with session_manager.session() as session:
+        profile_schema = ProfileCreate(
+            first_name="Dima",
+            last_name="Matveev",
+            phone_number="+375(29)999-09-09",
+            bio="fake bio",
+            avatar="https://example.com/",
+        )
+        user_profile = profile_schema.model_dump()
+        user_profile.update(user_id=create_fake_user.id)
+        profile_in_db = ProfileInDB(**user_profile)
+        created_profile = Profile(**profile_in_db.model_dump())
+        session.add(created_profile)
+        await session.commit()
+        await session.refresh(created_profile)
+
+    return ProfilePublic(**created_profile.as_dict())
+
+
+@pytest_asyncio.fixture(scope="function")
+async def create_fake_inactive_user(
+    create_fake_user: UserAuthSchema,
+) -> UserAuthSchema:
+    async with session_manager.session() as session:
+        res = await session.execute(
+            update(User)
+            .where(User.id == create_fake_user.id)
+            .returning(User)
+            .values(is_active=False)
+        )
+        await session.flush()
+        await session.commit()
+        user = res.scalar()
+        create_fake_user.is_active = user.is_active
+
+        return create_fake_user

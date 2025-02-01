@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-import pytest_asyncio
 from fastapi import (
     FastAPI,
     status,
@@ -11,12 +10,8 @@ from httpx import AsyncClient
 from api.api_v1.profiles.schemas import (
     ProfileCreate,
     ProfilePublic,
-    ProfileInDB,
     ProfileUpdate,
 )
-from tests.database import session_manager
-from api.api_v1.profiles.models import Profile
-from auth.schemas import UserAuthSchema
 
 pytestmark = pytest.mark.asyncio
 
@@ -31,23 +26,6 @@ def create_profile() -> ProfileCreate:
         bio="fake bio",
         avatar="https://example.com/",
     )
-
-
-@pytest_asyncio.fixture(scope="function")
-async def create_fake_profile(
-    create_fake_user: UserAuthSchema,
-    create_profile: ProfileCreate,
-) -> ProfilePublic:
-    async with session_manager.session() as session:
-        user_profile = create_profile.model_dump()
-        user_profile.update(user_id=create_fake_user.id)
-        profile_in_db = ProfileInDB(**user_profile)
-        created_profile = Profile(**profile_in_db.model_dump())
-        session.add(created_profile)
-        await session.commit()
-        await session.refresh(created_profile)
-
-    return ProfilePublic(**created_profile.as_dict())
 
 
 @pytest.fixture
