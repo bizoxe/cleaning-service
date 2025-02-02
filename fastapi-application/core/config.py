@@ -3,6 +3,7 @@ Main application settings.
 """
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -15,8 +16,14 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from core.gunicorn import get_number_of_workers
 
 BASE_DIR = Path(__file__).parent.parent
+LOG_DEFAULT_FORMAT = (
+    "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
+)
+DATE_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+GUNICORN_WORKERS = get_number_of_workers()
 
 
 class RunConfig(BaseModel):
@@ -98,6 +105,27 @@ class RolesConfig(BaseModel):
     editor_pwd: str
 
 
+class LoggingConfig(BaseModel):
+    log_format: str = LOG_DEFAULT_FORMAT
+    date_fmt: str = DATE_FORMAT
+    log_level: Literal[
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    ] = "INFO"
+
+
+class GunicornConfig(BaseModel):
+    host: str = "0.0.0.0"
+    port: int = 8080
+    workers: int = GUNICORN_WORKERS
+    timeout: int = 900
+    access_log_lvl: str = "INFO"
+    error_log_lvl: str = "INFO"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env.template", ".env"),
@@ -110,6 +138,8 @@ class Settings(BaseSettings):
     db: DataBaseConfig
     auth_jwt: AuthJWT = AuthJWT()
     roles: RolesConfig
+    log_cfg: LoggingConfig = LoggingConfig()
+    gunicorn: GunicornConfig = GunicornConfig()
 
 
 settings = Settings()
