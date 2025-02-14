@@ -136,3 +136,23 @@ async def get_current_active_auth_user(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Inactive user",
     )
+
+
+class UserProfilePermissionGetter:
+    def __init__(self, register_as: str) -> None:
+        self._register_as = register_as
+
+    async def __call__(
+        self,
+        user_auth: Annotated[UserAuthSchema, Depends(get_current_active_auth_user)],
+    ) -> None:
+        if not user_auth.profile_exists:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You do not have a registered profile",
+            )
+        if self._register_as not in user_auth.permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access is only allowed to users registered as a {self._register_as!r}",
+            )
