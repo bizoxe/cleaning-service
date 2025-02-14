@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,10 +7,11 @@ from fastapi.responses import ORJSONResponse
 
 from core.config import settings
 from core.models import db_helper
+from server.utils.middlewares import PaginationMiddleware
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
     await db_helper.dispose()
@@ -29,6 +31,7 @@ def _init_middleware(_app: FastAPI) -> None:
         allow_methods=settings.api.cors_allow_methods,
         allow_headers=settings.api.cors_allow_headers,
     )
+    _app.add_middleware(PaginationMiddleware)
 
 
 def create_app() -> FastAPI:

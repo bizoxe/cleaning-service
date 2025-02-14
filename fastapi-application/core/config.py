@@ -123,6 +123,10 @@ class GunicornConfig(BaseModel):
     error_log_lvl: str = "INFO"
 
 
+class PaginationConfig(BaseModel):
+    secret_key: bytes
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env.template", ".env"),
@@ -137,6 +141,7 @@ class Settings(BaseSettings):
     roles: RolesConfig
     log_cfg: LoggingConfig = LoggingConfig()
     gunicorn: GunicornConfig = GunicornConfig()
+    pagination: PaginationConfig
 
 
 settings = Settings()
