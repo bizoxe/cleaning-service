@@ -9,15 +9,16 @@ from fastapi import (
 from httpx import AsyncClient
 from sqlalchemy import insert
 
-from tests.database import session_manager
-from auth.schemas import UserAuthSchema
 from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.cleanings.schemas import (
     CleaningCreate,
     CleaningInDB,
     CleaningPublic,
+    CleaningType,
 )
 from api.api_v1.users.schemas import UserPublic
+from auth.schemas import UserAuthSchema
+from tests.database import session_manager
 
 pytestmark = pytest.mark.asyncio
 
@@ -25,20 +26,20 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 def create_cleaning() -> CleaningCreate:
     return CleaningCreate(
-        name="test cleaning",
+        name="window cleaning",
         price=20.0,
-        description="cleaning for test",
-        cleaning_type="spot clean",
+        description="window cleaning for test",
+        cleaning_type=CleaningType("spot clean"),
     )
 
 
 @pytest.fixture
 def create_cleaning_2() -> CleaningCreate:
     return CleaningCreate(
-        name="test",
+        name="flat cleaning",
         price=20.0,
-        description="test",
-        cleaning_type="full clean",
+        description="test flat cleaning",
+        cleaning_type=CleaningType("full clean"),
     )
 
 
@@ -65,15 +66,10 @@ async def create_fake_multiple_cleanings(
     create_cleaning_2: CleaningCreate,
 ) -> list[Cleaning]:
     cleaning_schemas = [create_cleaning.model_dump(), create_cleaning_2.model_dump()]
-    cleanings_in_db = [
-        CleaningInDB(owner=create_fake_user.id, **cleaning)
-        for cleaning in cleaning_schemas
-    ]
+    cleanings_in_db = [CleaningInDB(owner=create_fake_user.id, **cleaning) for cleaning in cleaning_schemas]
     instances = [{**obj.model_dump()} for obj in cleanings_in_db]
     async with session_manager.session() as session:
-        results = await session.scalars(
-            insert(Cleaning).returning(Cleaning).values(instances)
-        )
+        results = await session.scalars(insert(Cleaning).returning(Cleaning).values(instances))
         await session.flush()
         await session.commit()
 
@@ -153,7 +149,85 @@ class TestCleaningsRoutesUnauthorizedUser:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+class TestCleaningsRoutesCustomerUser:
+    async def test_create_new_cleaning(
+        self,
+        app: FastAPI,
+        authorized_client_customer: AsyncClient,
+        create_cleaning: CleaningCreate,
+    ) -> None:
+        response = await authorized_client_customer.post(
+            app.url_path_for("cleanings:create-cleaning"),
+            json=create_cleaning.model_dump(),
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json().get("detail") == "Only users registered as a cleaner can create cleanings"
+
+    async def test_get_cleaning_by_id(
+        self,
+        app: FastAPI,
+        authorized_client_customer: AsyncClient,
+        create_fake_cleaning: CleaningPublic,
+    ) -> None:
+        response = await authorized_client_customer.get(
+            app.url_path_for(
+                "cleanings:get-cleaning-by-id",
+                cleaning_id=create_fake_cleaning.id,
+            )
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json().get("detail") == "Access is only allowed to users registered as a 'cleaner'"
+
+    async def test_update_cleaning(
+        self,
+        app: FastAPI,
+        authorized_client_customer: AsyncClient,
+        create_fake_cleaning: CleaningPublic,
+        create_cleaning_2: CleaningCreate,
+    ) -> None:
+        response = await authorized_client_customer.put(
+            app.url_path_for(
+                "cleanings:update-cleaning",
+                cleaning_id=create_fake_cleaning.id,
+            ),
+            json=create_cleaning_2.model_dump(),
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json().get("detail") == "Access is only allowed to users registered as a 'cleaner'"
+
+    async def test_delete_cleaning(
+        self,
+        app: FastAPI,
+        authorized_client_customer: AsyncClient,
+        create_fake_cleaning: CleaningPublic,
+    ) -> None:
+        response = await authorized_client_customer.delete(
+            app.url_path_for(
+                "cleanings:delete-cleaning",
+                cleaning_id=create_fake_cleaning.id,
+            )
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json().get("detail") == "Access is only allowed to users registered as a 'cleaner'"
+
+    async def test_get_user_all_cleanings(self, app: FastAPI, authorized_client_customer: AsyncClient) -> None:
+        response = await authorized_client_customer.get(app.url_path_for("cleanings:get-all-cleanings"))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json().get("detail") == "Access is only allowed to users registered as a 'cleaner'"
+
+
 class TestCleaningsCreate:
+    async def test_create_new_cleaning_without_profile(
+        self,
+        app: FastAPI,
+        authorized_client: AsyncClient,
+        create_cleaning: CleaningCreate,
+    ) -> None:
+        response = await authorized_client.post(
+            app.url_path_for("cleanings:create-cleaning"),
+            json=create_cleaning.model_dump(),
+        )
+        assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
 
     @pytest.mark.parametrize(
         "payload, status_code",
@@ -181,11 +255,11 @@ class TestCleaningsCreate:
     async def test_create_new_cleaning_valid_input(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         payload: dict[str, Any],
         status_code: int,
     ) -> None:
-        response = await authorized_client.post(
+        response = await authorized_client_cleaner.post(
             app.url_path_for("cleanings:create-cleaning"),
             json=payload,
         )
@@ -232,11 +306,11 @@ class TestCleaningsCreate:
     async def test_create_new_cleaning_invalid_input(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         payload: dict[str, Any],
         status_code: int,
     ) -> None:
-        response = await authorized_client.post(
+        response = await authorized_client_cleaner.post(
             app.url_path_for("cleanings:create-cleaning"),
             json=payload,
         )
@@ -248,11 +322,11 @@ class TestCleaningsGetByID:
     async def test_get_cleaning_by_id(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         create_fake_cleaning: CleaningPublic,
         create_fake_user: UserAuthSchema,
     ) -> None:
-        response = await authorized_client.get(
+        response = await authorized_client_cleaner.get(
             app.url_path_for(
                 "cleanings:get-cleaning-by-id",
                 cleaning_id=create_fake_cleaning.id,
@@ -266,9 +340,9 @@ class TestCleaningsGetByID:
     async def test_get_cleaning_by_id_not_found(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
     ) -> None:
-        response = await authorized_client.get(
+        response = await authorized_client_cleaner.get(
             app.url_path_for(
                 "cleanings:get-cleaning-by-id",
                 cleaning_id=99,
@@ -282,16 +356,16 @@ class TestCleaningsUpdateByID:
     async def test_update_cleaning(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         create_fake_cleaning: CleaningPublic,
     ) -> None:
         cleaning_schema = CleaningCreate(
-            name="test",
+            name="update cleaning test",
             price=20.0,
             description=None,
-            cleaning_type="full clean",
+            cleaning_type=CleaningType("full clean"),
         )
-        response = await authorized_client.put(
+        response = await authorized_client_cleaner.put(
             app.url_path_for(
                 "cleanings:update-cleaning",
                 cleaning_id=create_fake_cleaning.id,
@@ -308,9 +382,9 @@ class TestCleaningsUpdateByID:
     async def test_update_cleaning_not_found(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
     ) -> None:
-        response = await authorized_client.put(
+        response = await authorized_client_cleaner.put(
             app.url_path_for(
                 "cleanings:update-cleaning",
                 cleaning_id=99,
@@ -325,10 +399,10 @@ class TestCleaningsDeleteByID:
     async def test_delete_cleaning(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         create_fake_cleaning: CleaningPublic,
     ) -> None:
-        response = await authorized_client.delete(
+        response = await authorized_client_cleaner.delete(
             app.url_path_for(
                 "cleanings:delete-cleaning",
                 cleaning_id=create_fake_cleaning.id,
@@ -339,10 +413,13 @@ class TestCleaningsDeleteByID:
     async def test_delete_cleaning_not_found(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
     ) -> None:
-        response = await authorized_client.delete(
-            app.url_path_for("cleanings:delete-cleaning", cleaning_id=99)
+        response = await authorized_client_cleaner.delete(
+            app.url_path_for(
+                "cleanings:delete-cleaning",
+                cleaning_id=99,
+            )
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -352,15 +429,11 @@ class TestCleaningsGetAllCleanings:
     async def test_get_user_all_cleanings(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
+        authorized_client_cleaner: AsyncClient,
         create_fake_multiple_cleanings: list[Cleaning],
     ) -> None:
-        response = await authorized_client.get(
-            app.url_path_for("cleanings:get-all-cleanings")
-        )
-        cleaning_schemas = [
-            CleaningPublic(**cl.as_dict()) for cl in create_fake_multiple_cleanings
-        ]
+        response = await authorized_client_cleaner.get(app.url_path_for("cleanings:get-all-cleanings"))
+        cleaning_schemas = [CleaningPublic(**cl.as_dict()) for cl in create_fake_multiple_cleanings]
         cleaning_resp = [CleaningPublic(**rs) for rs in response.json()]
         assert cleaning_resp == cleaning_schemas
         assert len(response.json()) == len(create_fake_multiple_cleanings)
