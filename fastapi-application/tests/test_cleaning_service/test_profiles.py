@@ -8,6 +8,7 @@ from fastapi import (
 from httpx import AsyncClient
 
 from api.api_v1.profiles.schemas import (
+    MemberType,
     ProfileCreate,
     ProfilePublic,
     ProfileUpdate,
@@ -23,19 +24,20 @@ def create_profile() -> ProfileCreate:
         first_name="Dima",
         last_name="Matveev",
         phone_number="+375(29)999-09-09",
-        bio="fake bio",
+        bio="fake bio info",
         avatar="https://example.com/",
+        register_as=MemberType("customer"),
     )
 
 
 @pytest.fixture
-def create_profile_update() -> ProfileUpdate:
+def create_profile_to_update() -> ProfileUpdate:
 
     return ProfileUpdate(
-        first_name="updatedname",
-        last_name="updatedname",
-        phone_number="+375(29)999-09-09",
-        bio="about me",
+        first_name="Updatedname",
+        last_name="Updatedsurname",
+        phone_number="+375(25)999-09-09",
+        bio="updated about me info",
         avatar="https://example.com/",
     )
 
@@ -56,11 +58,13 @@ class TestProfileRoutesUnauthorisedUser:
         resp = await client.post(
             app.url_path_for("profiles:get-user-auth-self-profile"),
             json={},
+            headers=headers,
         )
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
         resp = await client.post(
             app.url_path_for("profiles:update-user-auth-self-profile"),
             json={},
+            headers=headers,
         )
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -77,16 +81,18 @@ class TestProfilesCreate:
                     "phone_number": "+375(25)999-09-09",
                     "bio": "info about me",
                     "avatar": "https://example.com/",
+                    "register_as": "customer",
                 },
                 201,
             ),
             (
                 {
-                    "first_name": "Elena",
-                    "last_name": "Dolgorukaya",
+                    "first_name": "Alex",
+                    "last_name": "Matveev",
                     "phone_number": "+375(25)999-09-09",
                     "bio": None,
                     "avatar": None,
+                    "register_as": "cleaner",
                 },
                 201,
             ),
@@ -103,9 +109,14 @@ class TestProfilesCreate:
             app.url_path_for("profiles:create-profile-for-user-auth"),
             json=payload,
         )
-        profile_create = ProfileCreate(**payload).model_dump()
-        profile = ProfilePublic(**resp.json()).model_dump()
-        assert profile_create == profile
+        profile_create = ProfileCreate(**payload)
+        profile = ProfilePublic(**resp.json())
+        assert profile.first_name == profile_create.first_name
+        assert profile.last_name == profile_create.last_name
+        assert profile.phone_number == profile_create.phone_number
+        assert profile.avatar == profile_create.avatar
+        assert profile.bio == profile_create.bio
+        assert profile.register_as == profile_create.register_as
         assert resp.status_code == status_code
 
     @pytest.mark.parametrize(
@@ -118,6 +129,7 @@ class TestProfilesCreate:
                     "phone_number": "+375(25)999-09-09",
                     "bio": "info about me",
                     "avatar": "https://example.com/",
+                    "register_as": "customer",
                 },
                 422,
             ),
@@ -128,6 +140,7 @@ class TestProfilesCreate:
                     "phone_number": "+375(25)999-09-09",
                     "bio": None,
                     "avatar": None,
+                    "register_as": "cleaner",
                 },
                 422,
             ),
@@ -138,6 +151,7 @@ class TestProfilesCreate:
                     "phone_number": "+375(25)999-09-09",
                     "bio": None,
                     "avatar": None,
+                    "register_as": "customer",
                 },
                 422,
             ),
@@ -155,10 +169,7 @@ class TestProfilesCreate:
             json=payload,
         )
         msg = resp.json().get("detail")[0]["msg"]
-        assert (
-            msg
-            == "Value error, Only letters are allowed. Do not use special characters or numbers"
-        )
+        assert msg == "Value error, Only letters are allowed. Do not use special characters or numbers"
         assert resp.status_code == status_code
 
     @pytest.mark.parametrize(
@@ -171,6 +182,7 @@ class TestProfilesCreate:
                     "phone_number": "+375(2)999-09-09",
                     "bio": "info about me",
                     "avatar": "https://example.com/",
+                    "register_as": "customer",
                 },
                 422,
             ),
@@ -181,6 +193,7 @@ class TestProfilesCreate:
                     "phone_number": "+375(25)99-09-09",
                     "bio": None,
                     "avatar": None,
+                    "register_as": "customer",
                 },
                 422,
             ),
@@ -198,37 +211,88 @@ class TestProfilesCreate:
             json=payload,
         )
         msg = resp.json().get("detail")[0]["msg"]
-        assert (
-            msg
-            == "Value error, Allowable format of mobile phone numbers without spaces: +375(xx)xxx-xx-xx"
-        )
+        assert msg == "Value error, Allowable format of mobile phone numbers without spaces: +375(xx)xxx-xx-xx"
         assert resp.status_code == status_code
+
+    @pytest.mark.parametrize(
+        "payload, status_code",
+        [
+            (
+                {
+                    "first_name": "Elena",
+                    "last_name": "Dolgorukaya",
+                    "phone_number": "+375(25)999-09-09",
+                    "bio": "info about me",
+                    "avatar": "https://example.com/",
+                    "register_as": "teddy bear",
+                },
+                422,
+            ),
+            (
+                {
+                    "first_name": "Elena",
+                    "last_name": "Dolgorukaya",
+                    "phone_number": "+375(25)999-09-09",
+                    "bio": "info about me",
+                    "avatar": "https://example.com/",
+                    "register_as": "pokemon",
+                },
+                422,
+            ),
+        ],
+    )
+    async def test_create_profile_for_user_auth_invalid_register_as(
+        self,
+        app: FastAPI,
+        authorized_client: AsyncClient,
+        payload: dict[str, Any],
+        status_code: int,
+    ) -> None:
+        response = await authorized_client.post(
+            app.url_path_for("profiles:create-profile-for-user-auth"),
+            json=payload,
+        )
+        msg = response.json().get("detail")[0]["msg"]
+        assert response.status_code == status_code
+        assert msg == "Input should be 'customer' or 'cleaner'"
 
     async def test_create_profile_for_user_auth_exists(
         self,
         app: FastAPI,
-        create_fake_profile: ProfilePublic,
+        create_fake_customer_profile: ProfilePublic,
         authorized_client: AsyncClient,
         create_profile: ProfileCreate,
     ) -> None:
+        profile = create_profile.model_dump()
+        profile["avatar"] = str(profile["avatar"])
         resp = await authorized_client.post(
             app.url_path_for("profiles:create-profile-for-user-auth"),
-            json=create_profile.model_dump(),
+            json=profile,
         )
         assert resp.status_code == status.HTTP_409_CONFLICT
 
 
 class TestGetSelfProfile:
-    async def test_get_user_auth_self_profile(
+    async def test_get_user_auth_self_customer_profile(
         self,
         app: FastAPI,
-        create_fake_profile: ProfilePublic,
-        authorized_client: AsyncClient,
+        authorized_client_customer: AsyncClient,
+        create_fake_customer_profile: ProfilePublic,
     ) -> None:
-        resp = await authorized_client.get(
-            app.url_path_for("profiles:get-user-auth-self-profile")
-        )
-        assert create_fake_profile == ProfilePublic(**resp.json())
+        resp = await authorized_client_customer.get(app.url_path_for("profiles:get-user-auth-self-profile"))
+        assert create_fake_customer_profile == ProfilePublic(**resp.json())
+        assert resp.json().get("register_as") == "customer"
+        assert resp.status_code == status.HTTP_200_OK
+
+    async def test_get_user_auth_self_cleaner_profile(
+        self,
+        app: FastAPI,
+        authorized_client_cleaner: AsyncClient,
+        create_fake_cleaner_profile: ProfilePublic,
+    ) -> None:
+        resp = await authorized_client_cleaner.get(app.url_path_for("profiles:get-user-auth-self-profile"))
+        assert create_fake_cleaner_profile == ProfilePublic(**resp.json())
+        assert resp.json().get("register_as") == "cleaner"
         assert resp.status_code == status.HTTP_200_OK
 
     async def test_get_user_auth_self_profile_not_exists(
@@ -236,9 +300,7 @@ class TestGetSelfProfile:
         app: FastAPI,
         authorized_client: AsyncClient,
     ) -> None:
-        resp = await authorized_client.get(
-            app.url_path_for("profiles:get-user-auth-self-profile")
-        )
+        resp = await authorized_client.get(app.url_path_for("profiles:get-user-auth-self-profile"))
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -246,26 +308,28 @@ class TestProfileUpdate:
     async def test_update_user_auth_self_profile(
         self,
         app: FastAPI,
-        create_fake_profile: ProfilePublic,
-        authorized_client: AsyncClient,
-        create_profile_update: ProfileUpdate,
+        authorized_client_customer: AsyncClient,
+        create_profile_to_update: ProfileUpdate,
     ) -> None:
-        to_update = create_profile_update.model_dump()
-        resp = await authorized_client.put(
+        resp = await authorized_client_customer.put(
             app.url_path_for("profiles:update-user-auth-self-profile"),
-            json=to_update,
+            json=create_profile_to_update.model_dump(),
         )
         updated_profile = ProfilePublic(**resp.json())
-        assert updated_profile == ProfilePublic(**to_update)
+        assert updated_profile.first_name == create_profile_to_update.first_name
+        assert updated_profile.last_name == create_profile_to_update.last_name
+        assert updated_profile.phone_number == create_profile_to_update.phone_number
+        assert updated_profile.bio == create_profile_to_update.bio
+        assert updated_profile.avatar == create_profile_to_update.avatar
         assert resp.status_code == status.HTTP_200_OK
 
     async def test_update_user_auth_self_profile_not_exists(
         self,
         app: FastAPI,
         authorized_client: AsyncClient,
-        create_profile_update: ProfileUpdate,
+        create_profile_to_update: ProfileUpdate,
     ) -> None:
-        to_update = create_profile_update.model_dump()
+        to_update = create_profile_to_update.model_dump()
         resp = await authorized_client.put(
             app.url_path_for("profiles:update-user-auth-self-profile"),
             json=to_update,
