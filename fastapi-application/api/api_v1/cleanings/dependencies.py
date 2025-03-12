@@ -1,16 +1,16 @@
 from typing import Annotated
 
 from fastapi import (
-    Path,
-    HTTPException,
-    status,
     Depends,
+    HTTPException,
+    Path,
+    status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.api_v1.cleanings.models import Cleaning
 from core.models import db_helper
 from crud.cleanings import cleanings_crud
-from api.api_v1.cleanings.models import Cleaning
 
 
 async def get_one_cleaning(
@@ -18,7 +18,7 @@ async def get_one_cleaning(
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> Cleaning:
     """
-    Is used as a dependency for CRUD operations.
+    Gets cleaning by ID from path.
     """
     cleaning = await cleanings_crud.get_one_cleaning_by_id(
         session=session,

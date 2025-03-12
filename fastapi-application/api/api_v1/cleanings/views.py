@@ -1,31 +1,31 @@
-"""
-Cleaning views.
-"""
-
 from typing import Annotated
 
 from fastapi import (
     APIRouter,
     Depends,
-    status,
-    Security,
+    HTTPException,
     Response,
+    Security,
+    status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.schemas import UserAuthSchema
-from auth.dependencies import get_current_active_auth_user
+from api.api_v1.cleanings.dependencies import get_one_cleaning
+from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.cleanings.schemas import (
     CleaningCreate,
     CleaningInDB,
     CleaningPublic,
     CleaningUpdate,
 )
+from api.api_v1.profiles.dependencies import (
+    get_user_profile_or_http_exception,
+)
+from api.api_v1.users.schemas import UserPublic
+from auth.dependencies import UserProfilePermissionGetter
+from auth.schemas import UserAuthProfile, UserAuthSchema
 from core.models import db_helper
 from crud.cleanings import cleanings_crud
-from api.api_v1.users.schemas import UserPublic
-from api.api_v1.cleanings.models import Cleaning
-from api.api_v1.cleanings.dependencies import get_one_cleaning
 
 router = APIRouter(
     tags=["Cleanings"],
@@ -40,11 +40,21 @@ router = APIRouter(
     summary="creating a new cleaning for the user",
 )
 async def create_new_cleaning(
-    user_auth: Annotated[UserAuthSchema, Depends(get_current_active_auth_user)],
+    profile: Annotated[UserAuthProfile, Depends(get_user_profile_or_http_exception)],
     new_cleaning: CleaningCreate,
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> CleaningPublic:
-    cleaning = CleaningInDB(owner=user_auth.id, **new_cleaning.model_dump())
+    """
+    Creates cleaning.
+
+    If the user does not have a profile, the user is redirected to create a profile.
+    """
+    if profile.register_as != "cleaner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only users registered as a cleaner can create cleanings",
+        )
+    cleaning = CleaningInDB(owner=profile.user_id, **new_cleaning.model_dump())
     created_cleaning = await cleanings_crud.create_cleaning(
         session=session,
         cleaning=cleaning,
@@ -60,7 +70,7 @@ async def create_new_cleaning(
     summary="getting one cleaning by its identifier",
 )
 async def get_cleaning_by_id(
-    user_auth: Annotated[UserAuthSchema, Depends(get_current_active_auth_user)],
+    user_auth: Annotated[UserAuthSchema, Depends(UserProfilePermissionGetter("cleaner"))],
     cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
 ) -> CleaningPublic:
     cleaning_by_id = cleaning.as_dict()
@@ -74,11 +84,9 @@ async def get_cleaning_by_id(
     response_model=CleaningPublic,
     name="cleanings:update-cleaning",
     summary="updating the cleaning by its identifier",
+    dependencies=[Security(UserProfilePermissionGetter("cleaner"), scopes=["modify"])],
 )
 async def update_cleaning(
-    user_auth: Annotated[
-        UserAuthSchema, Security(get_current_active_auth_user, scopes=["modify"])
-    ],
     cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
     cleaning_update: CleaningUpdate,
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
@@ -96,11 +104,9 @@ async def update_cleaning(
     "/{cleaning_id}",
     name="cleanings:delete-cleaning",
     summary="deleting the cleaning by its identifier",
+    dependencies=[Security(UserProfilePermissionGetter("cleaner"), scopes=["modify"])],
 )
 async def delete_cleaning(
-    user_auth: Annotated[
-        UserAuthSchema, Security(get_current_active_auth_user, scopes=["modify"])
-    ],
     cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> Response:
@@ -116,11 +122,12 @@ async def delete_cleaning(
     summary="getting user all self cleanings",
 )
 async def get_user_all_cleanings(
-    user_auth: Annotated[UserAuthSchema, Depends(get_current_active_auth_user)],
+    user_auth: Annotated[UserAuthSchema, Depends(UserProfilePermissionGetter("cleaner"))],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> list[CleaningPublic]:
     all_cleanings = await cleanings_crud.get_all_cleanings(
-        session=session, user_id=user_auth.id
+        session=session,
+        user_id=user_auth.id,
     )
 
-    return all_cleanings
+    return [CleaningPublic(**cl.as_dict()) for cl in all_cleanings]

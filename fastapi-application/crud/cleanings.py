@@ -1,15 +1,14 @@
 from uuid import UUID
-from typing import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from crud.base import CRUDRepository
+from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.cleanings.schemas import (
     CleaningInDB,
     CleaningPublic,
     CleaningUpdate,
 )
-from api.api_v1.cleanings.models import Cleaning
+from crud.base import CRUDRepository
 
 
 class CleaningCRUD(CRUDRepository):  # type: ignore
@@ -27,7 +26,7 @@ class CleaningCRUD(CRUDRepository):  # type: ignore
         Returns:
             CleaningPublic (pydantic model object): Newly created cleaning object.
         """
-        created_cleaning: Cleaning = await self.create_record(
+        created_cleaning = await self.create_record(
             session=session,
             obj_in=cleaning,
         )
@@ -48,7 +47,7 @@ class CleaningCRUD(CRUDRepository):  # type: ignore
         Returns:
                 Cleaning object if found, otherwise None.
         """
-        cleaning: Cleaning | None = await self.get_one_by_id(
+        cleaning = await self.get_one_by_id(
             session=session,
             obj_id=cleaning_id,
         )
@@ -71,7 +70,7 @@ class CleaningCRUD(CRUDRepository):  # type: ignore
         Returns:
             CleaningPublic (pydantic model object): Updated cleaning object.
         """
-        updated_cleaning: Cleaning = await self.update_record(
+        updated_cleaning = await self.update_record(
             session=session,
             db_obj=db_obj,
             obj_in=to_update,
@@ -96,8 +95,10 @@ class CleaningCRUD(CRUDRepository):  # type: ignore
         )
 
     async def get_all_cleanings(
-        self, session: AsyncSession, user_id: UUID
-    ) -> Sequence[Cleaning]:
+        self,
+        session: AsyncSession,
+        user_id: UUID,
+    ) -> list[Cleaning]:
         """
         Retrieves all cleaning objects from the database by owner field.
         Args:
@@ -105,10 +106,11 @@ class CleaningCRUD(CRUDRepository):  # type: ignore
             user_id: User identifier.
 
         Returns:
-                Sequence of cleaning objects.
+                List of cleaning objects.
         """
-        cleanings: Sequence[Cleaning] = await self.get_many_records(
-            session=session, owner=user_id
+        cleanings = await self.get_many_records(
+            session=session,
+            owner=user_id,
         )
 
         return cleanings

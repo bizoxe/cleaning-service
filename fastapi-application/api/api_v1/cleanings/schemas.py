@@ -1,15 +1,17 @@
-from enum import Enum
+from enum import StrEnum
+from typing import Annotated
 
+from annotated_types import MinLen
 from pydantic import (
+    UUID4,
     BaseModel,
     ConfigDict,
-    UUID4,
 )
 
 from api.api_v1.users.schemas import UserPublic
 
 
-class CleaningType(str, Enum):
+class CleaningType(StrEnum):
     dust_up = "dust up"
     spot_clean = "spot clean"
     full_clean = "full clean"
@@ -24,13 +26,14 @@ class CleaningBase(BaseModel):
 
 
 class CleaningCreate(CleaningBase):
-    name: str
+    name: Annotated[str, MinLen(3)]
     price: float
     description: str | None = None
     cleaning_type: CleaningType
 
 
 class CleaningUpdate(CleaningBase):
+    name: Annotated[str, MinLen(3)] | None
     cleaning_type: CleaningType
 
 

@@ -1,23 +1,19 @@
-"""
-Cleaning models.
-"""
-
 import uuid
 
+from sqlalchemy import (
+    UUID,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
 )
-from sqlalchemy import (
-    String,
-    Text,
-    Numeric,
-    UUID,
-    ForeignKey,
-)
 
-from core.models.mixins import IntIdPkMixin
 from core.models import Base
+from core.models.mixins import IntIdPkMixin
 
 
 class Cleaning(IntIdPkMixin, Base):
