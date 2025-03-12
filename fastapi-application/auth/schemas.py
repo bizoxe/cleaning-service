@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from pydantic import (
-    BaseModel,
     UUID4,
-    EmailStr,
+    BaseModel,
     ConfigDict,
+    EmailStr,
+    HttpUrl,
 )
 
 
@@ -14,8 +15,27 @@ class UserAuthSchema(BaseModel):
     email: EmailStr
     email_verified: bool
     is_active: bool
+    profile_exists: bool
     permissions: list[str]
     logged_in_at: datetime | None = None
+
+
+class UserAuthProfile(BaseModel):
+    first_name: str
+    last_name: str
+    phone_number: str
+    email: EmailStr
+    bio: str | None
+    avatar: HttpUrl | None
+    register_as: str
+    user_id: UUID4
+
+
+class UserAuthInfo(BaseModel):
+    email: EmailStr
+    email_verified: bool
+    logged_in_at: datetime
+    profile: UserAuthProfile | None
 
 
 class TokenMeta(BaseModel):

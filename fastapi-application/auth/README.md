@@ -2,7 +2,7 @@
 
 Generate an RSA private key, of size 2048
 
-openssl genrsa -out jwt-private.pem 2048  
+openssl genrsa -out jwt-private.pem 2048
 
 Extract the public key from key pair, which can be used in certificate
 

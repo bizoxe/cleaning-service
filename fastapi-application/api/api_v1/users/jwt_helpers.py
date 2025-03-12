@@ -3,13 +3,12 @@ This module contains helper functions for issuing
 access and refresh tokens.
 """
 
-from typing import Any
 from datetime import timedelta
+from typing import Any
 
-from core.config import settings
-from auth.utils.auth_utils import encode_jwt
 from auth.schemas import UserAuthSchema
-
+from auth.utils.auth_utils import encode_jwt
+from core.config import settings
 
 TOKEN_TYPE_FIELD = "type"
 ACCESS_TOKEN_TYPE = "access"

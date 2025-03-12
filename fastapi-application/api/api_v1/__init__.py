@@ -2,14 +2,18 @@ __all__ = ("router",)
 
 from fastapi import APIRouter
 
-from core.config import settings
+from api.api_v1.cleanings import cleanings_router
+from api.api_v1.evaluations import evaluations_router
+from api.api_v1.offers import (
+    offers_cleanings_router,
+    offers_router,
+)
+from api.api_v1.profiles import profiles_router
 from api.api_v1.users import (
     auth_router,
     users_router,
 )
-from api.api_v1.cleanings import cleanings_router
-from api.api_v1.profiles import profiles_router
-
+from core.config import settings
 
 router = APIRouter(
     prefix=settings.api.v1.prefix,
@@ -29,4 +33,16 @@ router.include_router(
 router.include_router(
     profiles_router,
     prefix=settings.api.v1.profiles,
+)
+router.include_router(
+    offers_router,
+    prefix=settings.api.v1.offers,
+)
+router.include_router(
+    offers_cleanings_router,
+    prefix=settings.api.v1.offers_cleanings,
+)
+router.include_router(
+    evaluations_router,
+    prefix=settings.api.v1.evaluations,
 )

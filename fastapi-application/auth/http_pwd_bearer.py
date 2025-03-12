@@ -5,16 +5,15 @@ from typing import (
     override,
 )
 
-from fastapi.security import OAuth2PasswordBearer
 from fastapi import (
-    Request,
     HTTPException,
+    Request,
     status,
 )
+from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 
 from auth.utils.auth_utils import decode_jwt
-
 
 logger = logging.getLogger(__name__)
 

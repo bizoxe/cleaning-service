@@ -1,17 +1,17 @@
 from typing import Annotated
 
 from fastapi import (
-    Form,
     Depends,
-    status,
+    Form,
     HTTPException,
+    status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.schemas import UserAuthSchema
+from auth.utils.auth_utils import verify_password
 from core.models import db_helper
 from crud.users import users_crud
-from auth.utils.auth_utils import verify_password
-from auth.schemas import UserAuthSchema
 
 
 async def validate_user(
@@ -59,5 +59,6 @@ async def validate_user(
         email=user.email,
         email_verified=user.email_verified,
         is_active=user.is_active,
+        profile_exists=user.profile_exists,
         permissions=[perm.name for perm in user.role.permissions],
     )

@@ -2,23 +2,23 @@
 This module contains auxiliary functions for user authentication.
 """
 
-from typing import Any
+import uuid
 from datetime import (
-    timedelta,
     datetime,
+    timedelta,
     timezone,
 )
+from typing import Any
 
-import jwt
 import bcrypt
-import uuid
+import jwt
 
 from core.config import settings
 
 
 def encode_jwt(
     payload: dict[str, Any],
-    private_key: str = settings.auth_jwt.private_key_path.read_text(),
+    private_key: str = settings.auth_jwt.private_key_path.read_text(),  # noqa: B008
     algorithm: str = settings.auth_jwt.algorithm,
     expire_minutes: int = settings.auth_jwt.access_token_expire_minutes,
     expire_timedelta: timedelta | None = None,
@@ -54,7 +54,7 @@ def encode_jwt(
 
 def decode_jwt(
     token: str | bytes,
-    public_key: str = settings.auth_jwt.public_key_path.read_text(),
+    public_key: str = settings.auth_jwt.public_key_path.read_text(),  # noqa: B008
     algorithm: str = settings.auth_jwt.algorithm,
 ) -> dict[str, Any]:
     """

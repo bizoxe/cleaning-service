@@ -1,28 +1,23 @@
-"""
-User models.
-"""
-
 import uuid
 
+from sqlalchemy import (
+    UUID,
+    Boolean,
+    Column,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Table,
+    text,
+)
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
 )
-from sqlalchemy import (
-    Table,
-    Column,
-    Integer,
-    ForeignKey,
-    UUID,
-    String,
-    Boolean,
-    LargeBinary,
-    text,
-)
 
 from core.models import Base
-
 
 role_permission = Table(
     "role_permission",
@@ -42,6 +37,7 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, server_default="False")
     password: Mapped[bytes] = mapped_column(LargeBinary(200))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="True")
+    profile_exists: Mapped[bool] = mapped_column(Boolean, server_default="False")
     role_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("roles.id"),
@@ -72,6 +68,4 @@ class Role(Base):
 class Permission(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
-    roles = relationship(
-        "Role", secondary=role_permission, back_populates="permissions"
-    )
+    roles = relationship("Role", secondary=role_permission, back_populates="permissions")

@@ -2,33 +2,33 @@
 This module contains dependencies for user authentication.
 """
 
-from uuid import UUID
 from typing import (
     Annotated,
     Any,
 )
+from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import (
     Depends,
     HTTPException,
-    status,
     Security,
+    status,
 )
 from fastapi.security import SecurityScopes
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.schemas import (
-    UserAuthSchema,
-    TokenDataRefresh,
-    TokenData,
-)
-from crud.users import users_crud
 from auth.http_pwd_bearer import (
-    refresh_token_bearer,
     access_token_bearer,
+    refresh_token_bearer,
+)
+from auth.schemas import (
+    TokenData,
+    TokenDataRefresh,
+    UserAuthSchema,
 )
 from core.models import db_helper
+from crud.users import users_crud
 
 
 async def get_user_by_token_sub(
@@ -145,7 +145,7 @@ class UserProfilePermissionGetter:
     async def __call__(
         self,
         user_auth: Annotated[UserAuthSchema, Depends(get_current_active_auth_user)],
-    ) -> None:
+    ) -> UserAuthSchema:
         if not user_auth.profile_exists:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -156,3 +156,5 @@ class UserProfilePermissionGetter:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access is only allowed to users registered as a {self._register_as!r}",
             )
+
+        return user_auth
