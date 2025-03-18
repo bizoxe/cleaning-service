@@ -413,6 +413,22 @@ class TestCleaningOwnerAcceptOffer:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert msg == "Users can only accept offers in a pending status"
 
+    async def test_cleaning_owner_accept_offer_perm_denied(
+        self,
+        app: FastAPI,
+        authorized_client_cleaner: AsyncClient,
+        create_default_cleaning: Cleaning,
+        create_offer_in_db: OfferPublic,
+    ) -> None:
+        response = await authorized_client_cleaner.put(
+            app.url_path_for(
+                "offers-cleanings:cleaning-owner-accept-offer",
+                cleaning_id=create_default_cleaning.id,
+                offerer_id=create_offer_in_db.offerer_id,
+            )
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 class TestCleaningOwnerCancelOffer:
 
@@ -453,6 +469,23 @@ class TestCleaningOwnerCancelOffer:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert msg == "Users can only cancel offers in the 'accepted' status"
 
+    async def test_cleaning_owner_cancel_offer_perm_denied(
+        self,
+        app: FastAPI,
+        authorized_client_cleaner: AsyncClient,
+        create_default_cleaning: Cleaning,
+        change_offer_status: Callable[[str], Awaitable[OfferPublic]],
+    ) -> None:
+        set_status = await change_offer_status("accepted")
+        response = await authorized_client_cleaner.put(
+            app.url_path_for(
+                "offers-cleanings:cleaning-owner-cancel-offer",
+                cleaning_id=create_default_cleaning.id,
+                offerer_id=set_status.offerer_id,
+            )
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 class TestCleaningOwnerRejectOffer:
 
@@ -492,3 +525,19 @@ class TestCleaningOwnerRejectOffer:
         msg = response.json().get("detail")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert msg == "Users can only reject offers that are in a pending status"
+
+    async def test_cleaning_owner_reject_offer_perm_denied(
+        self,
+        app: FastAPI,
+        authorized_client_cleaner: AsyncClient,
+        create_default_cleaning: Cleaning,
+        create_offer_in_db: OfferPublic,
+    ) -> None:
+        response = await authorized_client_cleaner.put(
+            app.url_path_for(
+                "offers-cleanings:cleaning-owner-reject-offer",
+                cleaning_id=create_default_cleaning.id,
+                offerer_id=create_offer_in_db.offerer_id,
+            )
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN

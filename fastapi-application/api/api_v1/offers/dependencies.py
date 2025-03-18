@@ -13,7 +13,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.api_v1.cleanings.dependencies import get_one_cleaning
+from api.api_v1.cleanings.dependencies import check_cleaning_job_owner
 from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.offers.schemas import OfferPublic
 from auth.dependencies import UserProfilePermissionGetter
@@ -24,7 +24,7 @@ from crud.offers import offers_crud
 
 async def get_offer_from_user_by_user_id(
     offerer_id: Annotated[UUID, Path()],
-    cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
+    cleaning: Annotated[Cleaning, Depends(check_cleaning_job_owner)],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> OfferPublic:
     if offer := await offers_crud.get_user_offer(

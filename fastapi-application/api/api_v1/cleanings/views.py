@@ -5,12 +5,14 @@ from fastapi import (
     Depends,
     HTTPException,
     Response,
-    Security,
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.api_v1.cleanings.dependencies import get_one_cleaning
+from api.api_v1.cleanings.dependencies import (
+    check_cleaning_job_owner,
+    get_one_cleaning,
+)
 from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.cleanings.schemas import (
     CleaningCreate,
@@ -23,7 +25,10 @@ from api.api_v1.profiles.dependencies import (
 )
 from api.api_v1.users.schemas import UserPublic
 from auth.dependencies import UserProfilePermissionGetter
-from auth.schemas import UserAuthProfile, UserAuthSchema
+from auth.schemas import (
+    UserAuthProfile,
+    UserAuthSchema,
+)
 from core.models import db_helper
 from crud.cleanings import cleanings_crud
 
@@ -73,6 +78,12 @@ async def get_cleaning_by_id(
     user_auth: Annotated[UserAuthSchema, Depends(UserProfilePermissionGetter("cleaner"))],
     cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
 ) -> CleaningPublic:
+    if cleaning.owner != user_auth.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not the owner of this cleaning job",
+        )
+
     cleaning_by_id = cleaning.as_dict()
     cleaning_by_id.update(owner=UserPublic(**user_auth.model_dump()))
 
@@ -84,10 +95,9 @@ async def get_cleaning_by_id(
     response_model=CleaningPublic,
     name="cleanings:update-cleaning",
     summary="updating the cleaning by its identifier",
-    dependencies=[Security(UserProfilePermissionGetter("cleaner"), scopes=["modify"])],
 )
 async def update_cleaning(
-    cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
+    cleaning: Annotated[Cleaning, Depends(check_cleaning_job_owner)],
     cleaning_update: CleaningUpdate,
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> CleaningPublic:
@@ -104,10 +114,9 @@ async def update_cleaning(
     "/{cleaning_id}",
     name="cleanings:delete-cleaning",
     summary="deleting the cleaning by its identifier",
-    dependencies=[Security(UserProfilePermissionGetter("cleaner"), scopes=["modify"])],
 )
 async def delete_cleaning(
-    cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
+    cleaning: Annotated[Cleaning, Depends(check_cleaning_job_owner)],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
 ) -> Response:
     await cleanings_crud.delete_cleaning(session=session, db_obj=cleaning)

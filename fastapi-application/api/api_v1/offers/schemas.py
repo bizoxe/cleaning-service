@@ -1,5 +1,6 @@
 import datetime
 from enum import StrEnum
+from typing import Annotated
 
 from pydantic import (
     UUID4,
@@ -7,11 +8,14 @@ from pydantic import (
     ConfigDict,
     EmailStr,
 )
+from pydantic.functional_serializers import PlainSerializer
 
 from utils.pagination.schemas import (
     ItemQueryParams,
     SortBy,
 )
+
+ft_time = Annotated[datetime.time, PlainSerializer(lambda t: t.strftime("%H:%M"), return_type=str, when_used="json")]
 
 
 class UserInfo(BaseModel):
@@ -45,7 +49,7 @@ class OfferBase(BaseModel):
 
 class OfferCreate(BaseModel):
     requested_date: datetime.date | None
-    requested_time: datetime.time | None
+    requested_time: ft_time | None
 
 
 class OfferUpdate(BaseModel):
@@ -66,6 +70,7 @@ class OfferPublic(OfferInDB):
 
 
 class OfferCompleted(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
     status: OfferStatus
     cleaner_id: UUID4
 

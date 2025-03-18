@@ -9,20 +9,18 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.api_v1.cleanings.dependencies import get_one_cleaning
+from api.api_v1.cleanings.dependencies import check_cleaning_job_owner
 from api.api_v1.cleanings.models import Cleaning
 from api.api_v1.offers.dependencies import get_offer_from_user_by_user_id
 from api.api_v1.offers.schemas import (
     OfferPublic,
     OfferUpdate,
 )
-from auth.dependencies import UserProfilePermissionGetter
 from core.models import db_helper
 from crud.offers import offers_crud
 
 router = APIRouter(
     tags=["Offers for cleaning owners"],
-    dependencies=[Depends(UserProfilePermissionGetter("cleaner"))],
 )
 
 
@@ -34,7 +32,7 @@ router = APIRouter(
     summary="show all offers for a specific cleaning job",
 )
 async def show_offers_for_cleaning_owner_by_cleaning_id(
-    cleaning: Annotated[Cleaning, Depends(get_one_cleaning)],
+    cleaning: Annotated[Cleaning, Depends(check_cleaning_job_owner)],
     session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=30, ge=1, le=30),
