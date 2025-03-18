@@ -32,3 +32,8 @@ repos:
               flake8-bugbear,
             ]
           args: [ "--exclude=venv,.venv,__pycache__,.git" ]
+
+exclude: |
+   (?x)(
+        ^fastapi-application/api/api_v1/__init__.py
+    )
