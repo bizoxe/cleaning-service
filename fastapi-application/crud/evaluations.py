@@ -42,7 +42,12 @@ class EvaluationsCRUD(CRUDRepository):  # type: ignore
         Returns:
                 CleanerEvaluation object if found, otherwise None.
         """
-        logger.debug("getting %s by owner=%s and cleaner_id=%s", self._name, owner, cleaner_id)
+        logger.debug(
+            "getting %s by owner=%s and cleaner_id=%s",
+            self.__class__.__name__,
+            owner,
+            cleaner_id,
+        )
         res = await session.scalar(
             select(CleanerEvaluation).where(
                 and_(
