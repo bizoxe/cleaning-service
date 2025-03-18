@@ -2,6 +2,10 @@ __all__ = ("router",)
 
 from fastapi import APIRouter
 
+from api.api_v1.users import (
+    auth_router,
+    users_router,
+)
 from api.api_v1.cleanings import cleanings_router
 from api.api_v1.evaluations import evaluations_router
 from api.api_v1.offers import (
@@ -9,10 +13,6 @@ from api.api_v1.offers import (
     offers_router,
 )
 from api.api_v1.profiles import profiles_router
-from api.api_v1.users import (
-    auth_router,
-    users_router,
-)
 from core.config import settings
 
 router = APIRouter(
