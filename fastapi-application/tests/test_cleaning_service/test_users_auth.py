@@ -7,14 +7,13 @@ from fastapi import (
 )
 from httpx import AsyncClient
 
-from auth.schemas import (
-    UserAuthSchema,
-    UserAuthProfile,
-    UserAuthInfo,
-)
-from api.api_v1.users.schemas import UserCreate
 from api.api_v1.users.jwt_helpers import create_refresh_token
-from api.api_v1.profiles.schemas import ProfilePublic
+from api.api_v1.users.schemas import UserCreate
+from auth.schemas import (
+    UserAuthInfo,
+    UserAuthProfile,
+    UserAuthSchema,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -271,9 +270,7 @@ class TestUserAuthRefreshToken:
         app: FastAPI,
         authorized_client_refresh_jwt: AsyncClient,
     ) -> None:
-        response = await authorized_client_refresh_jwt.post(
-            app.url_path_for("auth:auth-user-refresh-jwt")
-        )
+        response = await authorized_client_refresh_jwt.post(app.url_path_for("auth:auth-user-refresh-jwt"))
         access_token = response.json().get("access_token")
         token_type = response.json().get("token_type")
         assert access_token != ""
@@ -285,9 +282,7 @@ class TestUserAuthRefreshToken:
         app: FastAPI,
         authorized_client: AsyncClient,
     ) -> None:
-        response = await authorized_client.post(
-            app.url_path_for("auth:auth-user-refresh-jwt")
-        )
+        response = await authorized_client.post(app.url_path_for("auth:auth-user-refresh-jwt"))
         response_msg = response.json().get("detail")
         assert response_msg == "Invalid token type 'access' expected 'refresh'"
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -327,24 +322,43 @@ class TestUserAuthSelfInfo:
         authorized_client: AsyncClient,
         create_fake_user: UserAuthSchema,
     ) -> None:
-        response = await authorized_client.get(
-            app.url_path_for("auth:user-auth-check-self-info")
-        )
+        response = await authorized_client.get(app.url_path_for("auth:user-auth-check-self-info"))
         user_info_schema = UserAuthInfo(profile=None, **response.json())
         assert user_info_schema.email == create_fake_user.email
         assert user_info_schema.email_verified == create_fake_user.email_verified
         assert response.status_code == status.HTTP_200_OK
 
-    async def test_user_auth_check_self_info_with_profile(
+    async def test_user_auth_check_self_info_with_customer_profile(
         self,
         app: FastAPI,
-        authorized_client: AsyncClient,
-        create_fake_profile: ProfilePublic,
+        authorized_client_customer: AsyncClient,
+        create_fake_customer_profile: UserAuthSchema,
     ) -> None:
-        response = await authorized_client.get(
-            app.url_path_for("auth:user-auth-check-self-info")
-        )
-        profile_schema = UserAuthProfile(**create_fake_profile.model_dump())
+        response = await authorized_client_customer.get(app.url_path_for("auth:user-auth-check-self-info"))
         profile_response = UserAuthProfile(**response.json().get("profile"))
-        assert profile_schema == profile_response
+        assert profile_response.user_id == create_fake_customer_profile.id
+        assert profile_response.register_as == "customer"
         assert response.status_code == status.HTTP_200_OK
+
+    async def test_user_auth_check_self_info_with_cleaner_profile(
+        self,
+        app: FastAPI,
+        authorized_client_cleaner: AsyncClient,
+        create_fake_cleaner_profile: UserAuthSchema,
+    ) -> None:
+        response = await authorized_client_cleaner.get(app.url_path_for("auth:user-auth-check-self-info"))
+        profile_response = UserAuthProfile(**response.json().get("profile"))
+        assert profile_response.user_id == create_fake_cleaner_profile.id
+        assert profile_response.register_as == "cleaner"
+        assert response.status_code == status.HTTP_200_OK
+
+    async def test_user_auth_check_self_info_unauthorized_user(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+    ) -> None:
+        response = await client.get(
+            app.url_path_for("auth:user-auth-check-self-info"),
+            headers={**client.headers, "Authorization": "Bearer"},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
