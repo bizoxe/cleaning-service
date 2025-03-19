@@ -1,18 +1,23 @@
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from fastapi import (
     FastAPI,
     status,
 )
 from httpx import AsyncClient
+from sqlalchemy import select
 
+from api.api_v1.profiles.models import Profile
 from api.api_v1.profiles.schemas import (
     MemberType,
     ProfileCreate,
     ProfilePublic,
     ProfileUpdate,
 )
+from auth.schemas import UserAuthSchema
+from tests.database import session_manager
 
 pytestmark = pytest.mark.asyncio
 
@@ -42,31 +47,73 @@ def create_profile_to_update() -> ProfileUpdate:
     )
 
 
+@pytest_asyncio.fixture(scope="function")
+async def get_customer_profile(
+    create_fake_customer_profile: UserAuthSchema,
+) -> ProfilePublic:
+    async with session_manager.session() as session:
+        profile = await session.scalar(
+            select(Profile).filter_by(
+                user_id=create_fake_customer_profile.id,
+            )
+        )
+
+        return ProfilePublic(**profile.as_dict())
+
+
+@pytest_asyncio.fixture(scope="function")
+async def get_cleaner_profile(
+    create_fake_cleaner_profile: UserAuthSchema,
+) -> ProfilePublic:
+    async with session_manager.session() as session:
+        profile = await session.scalar(
+            select(Profile).filter_by(
+                user_id=create_fake_cleaner_profile.id,
+            )
+        )
+
+        return ProfilePublic(**profile.as_dict())
+
+
 class TestProfileRoutesUnauthorisedUser:
-    async def test_profile_routes(
+    async def test_create_profile_for_user_auth(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        create_profile: ProfileCreate,
+    ) -> None:
+        data = create_profile.model_dump()
+        data["avatar"] = str(data["avatar"])
+        resp_prof_create = await client.post(
+            app.url_path_for("profiles:create-profile-for-user-auth"),
+            json=data,
+            headers={**client.headers, "Authorization": "Bearer"},
+        )
+        assert resp_prof_create.status_code == status.HTTP_401_UNAUTHORIZED
+
+    async def test_get_user_auth_self_profile(
         self,
         app: FastAPI,
         client: AsyncClient,
     ) -> None:
-        headers = {**client.headers, "Authorization": "Bearer"}
-        resp = await client.post(
-            app.url_path_for("profiles:create-profile-for-user-auth"),
-            json={},
-            headers=headers,
-        )
-        assert resp.status_code == status.HTTP_401_UNAUTHORIZED
-        resp = await client.post(
+        resp_self_profile = await client.get(
             app.url_path_for("profiles:get-user-auth-self-profile"),
-            json={},
-            headers=headers,
+            headers={**client.headers, "Authorization": "Bearer"},
         )
-        assert resp.status_code == status.HTTP_401_UNAUTHORIZED
-        resp = await client.post(
+        assert resp_self_profile.status_code == status.HTTP_401_UNAUTHORIZED
+
+    async def test_update_user_auth_self_profile(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        create_profile_to_update: ProfileUpdate,
+    ) -> None:
+        resp_update_prof = await client.put(
             app.url_path_for("profiles:update-user-auth-self-profile"),
-            json={},
-            headers=headers,
+            json=create_profile_to_update.model_dump(),
+            headers={**client.headers, "Authorization": "Bearer"},
         )
-        assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+        assert resp_update_prof.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestProfilesCreate:
@@ -259,13 +306,12 @@ class TestProfilesCreate:
     async def test_create_profile_for_user_auth_exists(
         self,
         app: FastAPI,
-        create_fake_customer_profile: ProfilePublic,
-        authorized_client: AsyncClient,
+        authorized_client_customer: AsyncClient,
         create_profile: ProfileCreate,
     ) -> None:
         profile = create_profile.model_dump()
         profile["avatar"] = str(profile["avatar"])
-        resp = await authorized_client.post(
+        resp = await authorized_client_customer.post(
             app.url_path_for("profiles:create-profile-for-user-auth"),
             json=profile,
         )
@@ -277,10 +323,10 @@ class TestGetSelfProfile:
         self,
         app: FastAPI,
         authorized_client_customer: AsyncClient,
-        create_fake_customer_profile: ProfilePublic,
+        get_customer_profile: ProfilePublic,
     ) -> None:
         resp = await authorized_client_customer.get(app.url_path_for("profiles:get-user-auth-self-profile"))
-        assert create_fake_customer_profile == ProfilePublic(**resp.json())
+        assert get_customer_profile == ProfilePublic(**resp.json())
         assert resp.json().get("register_as") == "customer"
         assert resp.status_code == status.HTTP_200_OK
 
@@ -288,10 +334,10 @@ class TestGetSelfProfile:
         self,
         app: FastAPI,
         authorized_client_cleaner: AsyncClient,
-        create_fake_cleaner_profile: ProfilePublic,
+        get_cleaner_profile: ProfilePublic,
     ) -> None:
         resp = await authorized_client_cleaner.get(app.url_path_for("profiles:get-user-auth-self-profile"))
-        assert create_fake_cleaner_profile == ProfilePublic(**resp.json())
+        assert get_cleaner_profile == ProfilePublic(**resp.json())
         assert resp.json().get("register_as") == "cleaner"
         assert resp.status_code == status.HTTP_200_OK
 
