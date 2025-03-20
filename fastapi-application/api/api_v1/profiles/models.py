@@ -31,5 +31,5 @@ class Profile(IntIdPkMixin, Base):
     def __repr__(self) -> str:
         return (
             f"Profile: (first_name={self.first_name!r}, last_name={self.last_name!r}, "
-            f"phone_number={self.phone_number!r}), email={self.email!r}"
+            f"phone_number={self.phone_number!r}, email={self.email!r})"
         )

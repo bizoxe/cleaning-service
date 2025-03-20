@@ -1,5 +1,9 @@
 from uuid import UUID
 
+from sqlalchemy import (
+    text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.api_v1.users.models import User
@@ -115,6 +119,62 @@ class UserCRUD(CRUDRepository):  # type: ignore
         user = await session.get(User, user_id)
 
         return UserAuthProfile(**user.profile[0].as_dict())
+
+    @staticmethod
+    async def reset_password(
+        user_id: UUID,
+        new_pwd: bytes,
+        session: AsyncSession,
+    ) -> User:
+        """
+        Updates the user's password.
+        Args:
+            user_id: User identifier.
+            new_pwd: New hashed user password.
+            session: The database session.
+
+        Returns:
+                The user object.
+        """
+        to_update = await session.scalar(
+            update(User).filter_by(id=user_id).returning(User).values(password=new_pwd),
+        )
+        await session.flush()
+        await session.commit()
+
+        return to_update
+
+    async def update_email(
+        self,
+        user_in: UserAuthSchema,
+        new_email: str,
+        session: AsyncSession,
+    ) -> User | None:
+        """
+        Updates the user's email.
+
+        If the user has a profile, updates the profile email.
+        Args:
+            user_in: Pydantic model object that contains user data.
+            new_email: New user email.
+            session: The database session.
+
+        Returns:
+                The user object or None if email is not unique.
+        """
+        unique_email = await self.get_user_by_email(session=session, email=new_email)
+        if unique_email is None:
+            user = await session.scalar(
+                update(User).filter_by(id=user_in.id).returning(User).values(email=new_email),
+            )
+            if user_in.profile_exists:
+                stmt = text("UPDATE profiles SET email = :new_email WHERE user_id = :id")
+                await session.execute(stmt, {"new_email": new_email, "id": user_in.id})
+            await session.flush()
+            await session.commit()
+            return user
+
+        return None
 
 
 users_crud = UserCRUD(User)
