@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
@@ -30,13 +29,6 @@ def _init_router(_app: FastAPI) -> None:
 
 
 def _init_middleware(_app: FastAPI) -> None:
-    _app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.api.cors_origins,
-        allow_credentials=settings.api.cors_allow_credentials,
-        allow_methods=settings.api.cors_allow_methods,
-        allow_headers=settings.api.cors_allow_headers,
-    )
     _app.add_middleware(PaginationMiddleware)
 
 

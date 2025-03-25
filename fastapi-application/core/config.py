@@ -7,9 +7,9 @@ from typing import Literal
 
 from pydantic import (
     BaseModel,
+    EmailStr,
     PostgresDsn,
     computed_field,
-    EmailStr,
 )
 from pydantic_settings import (
     BaseSettings,
@@ -17,15 +17,13 @@ from pydantic_settings import (
 )
 
 BASE_DIR = Path(__file__).parent.parent
-LOG_DEFAULT_FORMAT = (
-    "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
-)
+LOG_DEFAULT_FORMAT = "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 
 class RunConfig(BaseModel):
     host: str = "0.0.0.0"
-    port: int = 8080
+    port: int = 8000
 
 
 class ApiV1Prefix(BaseModel):
@@ -35,6 +33,8 @@ class ApiV1Prefix(BaseModel):
     cleanings: str = "/cleanings"
     profiles: str = "/profiles"
     offers: str = "/offers"
+    offers_cleanings: str = "/offers/cleanings/{cleaning_id}"
+    evaluations: str = "/evaluations"
 
 
 class ApiBaseConfig(BaseModel):
@@ -43,15 +43,6 @@ class ApiBaseConfig(BaseModel):
     prefix: str = "/api"
     environment: str = "dev"
     v1: ApiV1Prefix = ApiV1Prefix()
-    cors_origins: list[str] = ["*"]
-    cors_allow_credentials: bool = True
-    cors_allow_methods: list[str] = [
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-    ]
-    cors_allow_headers: list[str] = ["*"]
 
 
 class DataBaseConfig(BaseModel):
@@ -66,6 +57,9 @@ class DataBaseConfig(BaseModel):
     postgres_user: str
     postgres_pwd: str
     postgres_db: str
+
+    test_postgres_user: str
+    test_postgres_pwd: str
 
     naming_convention: dict[str, str] = {
         "ix": "ix_%(column_0_label)s",
@@ -117,7 +111,7 @@ class LoggingConfig(BaseModel):
 
 class GunicornConfig(BaseModel):
     host: str = "0.0.0.0"
-    port: int = 8080
+    port: int = 8000
     timeout: int = 900
     access_log_lvl: str = "INFO"
     error_log_lvl: str = "INFO"
