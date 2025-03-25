@@ -1,0 +1,15 @@
+[coverage:run]
+concurrency =
+    greenlet
+    thread
+omit =
+    tests/*
+    __init__.py
+    commands.py
+    scripts/*
+    core/gunicorn/*
+    main.py
+    run_main.py
+
+[report]
+omit = tests/*
