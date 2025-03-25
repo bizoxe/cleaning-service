@@ -1,0 +1,46 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: ./docker/db/Dockerfile
+    container_name: postgres-16.8_v
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/opt/backups
+    ports:
+      - ${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
+    env_file:
+      - "webapp.env"
+
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+      target: ${TARGET_ENV}
+    container_name: fastapi-cleaning-service
+    restart: unless-stopped
+    env_file:
+      - "webapp.env"
+    command: runserver
+    depends_on:
+      - postgres
+    expose:
+      - ${URL_PORT:-8000}
+
+  nginx:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    container_name: proxy-nginx
+    restart: unless-stopped
+    env_file:
+      - "webapp.env"
+    ports:
+      - ${URL_PORT:-8000}:80
+    depends_on:
+      - app
+
+
+volumes:
+  postgres_data:
