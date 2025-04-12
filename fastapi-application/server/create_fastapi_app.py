@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -13,13 +14,19 @@ from starlette.responses import HTMLResponse
 from core.config import settings
 from core.models import db_helper
 from server.utils.middlewares import PaginationMiddleware
+from utils.custom_logger.middlewares import LoggingMiddleware
+from utils.custom_logger.setup import setup_logging
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    setup_logging()
+    queue_handler = logging.getHandlerByName("queue_handler")
+    queue_handler.listener.start()
 
     yield
     await db_helper.dispose()
+    queue_handler.listener.stop()
 
 
 def _init_router(_app: FastAPI) -> None:
@@ -30,6 +37,7 @@ def _init_router(_app: FastAPI) -> None:
 
 def _init_middleware(_app: FastAPI) -> None:
     _app.add_middleware(PaginationMiddleware)
+    _app.middleware("http")(LoggingMiddleware())
 
 
 def _register_static_docs_routes(_app: FastAPI) -> None:

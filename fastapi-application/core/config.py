@@ -100,6 +100,9 @@ class RolesConfig(BaseModel):
 class LoggingConfig(BaseModel):
     log_format: str = LOG_DEFAULT_FORMAT
     date_fmt: str = DATE_FORMAT
+    log_dir: Path = BASE_DIR.joinpath("logs")
+    to_file: bool = True
+    default_log_cfg_yaml: Path = BASE_DIR / "default_logger_cfg.yaml"
     log_level: Literal[
         "DEBUG",
         "INFO",
