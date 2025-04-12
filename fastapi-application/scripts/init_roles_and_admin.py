@@ -3,19 +3,18 @@ Initialisation of user roles.
 Creating an administrator and editor in the database.
 """
 
-from sqlalchemy import select
 import typer
+from sqlalchemy import select
 
 from api.api_v1.users.models import (
-    Role,
     Permission,
+    Role,
     User,
 )
+from auth.utils.auth_utils import hash_password
 from core.config import settings
 from core.models import db_helper
-from auth.utils.auth_utils import hash_password
 from crud.users import users_crud
-
 
 ADMIN_EMAIL = settings.roles.admin_email
 ADMIN_PWD = settings.roles.admin_pwd
@@ -29,25 +28,29 @@ async def seed_roles_and_permissions() -> None:
     user_role = Role(id=1, name="UserAuth")
     editor_role = Role(id=2, name="Editor")
     admin_role = Role(id=3, name="Admin")
+    user_customer_role = Role(id=4, name="UserAuthCustomer")
+    user_cleaner_role = Role(id=5, name="UserAuthCleaner")
 
     read_permission = Permission(name="read")
     modify_permission = Permission(name="modify")
     write_permission = Permission(name="write")
     delete_permission = Permission(name="delete")
+    customer = Permission(name="customer")
+    cleaner = Permission(name="cleaner")
 
-    admin_role.permissions.extend(
-        [read_permission, modify_permission, write_permission, delete_permission]
-    )
-    editor_role.permissions.extend([read_permission, write_permission])
+    admin_role.permissions.extend([write_permission, delete_permission])
+    editor_role.permissions.extend([write_permission])
     user_role.permissions.extend([read_permission, modify_permission])
+    user_customer_role.permissions.extend([read_permission, modify_permission, customer])
+    user_cleaner_role.permissions.extend([read_permission, modify_permission, cleaner])
     async with async_session() as session:
         result = await session.execute(select(Role))
         roles_already_created = result.scalars().all()
         if not roles_already_created:
-            session.add_all([user_role, editor_role, admin_role])
+            session.add_all([user_role, editor_role, admin_role, customer, cleaner])
             await session.commit()
             success_msg = typer.style(
-                "Roles: authenticated user, editor, administrator successfully created",
+                "Roles: authenticated user, editor, administrator, customer, cleaner successfully created",
                 fg=typer.colors.GREEN,
                 bold=True,
             )
@@ -68,6 +71,7 @@ async def create_admin_and_editor() -> None:
         "email_verified": True,
         "password": hash_password(plaintext_password=ADMIN_PWD),
         "is_active": True,
+        "profile_exists": True,
         "role_id": 3,
     }
     editor_data = {
@@ -75,6 +79,7 @@ async def create_admin_and_editor() -> None:
         "email_verified": True,
         "password": hash_password(plaintext_password=EDITOR_PWD),
         "is_active": True,
+        "profile_exists": True,
         "role_id": 2,
     }
     async with async_session() as session:
