@@ -35,5 +35,6 @@ repos:
 
 exclude: |
    (?x)(
-        ^fastapi-application/api/api_v1/__init__.py
+        ^fastapi-application/api/api_v1/__init__.py|
+        ^fastapi-application/core/models/__init__.py
     )
