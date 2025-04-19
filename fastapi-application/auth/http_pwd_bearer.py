@@ -38,11 +38,13 @@ class TokenBearer(OAuth2PasswordBearer):
         self,
         token_type: str,
         tokenUrl: str = "/api/v1/auth/signin",
+        scheme_name: str = "custom_oauth2_pwd_bearer",
         scopes: MappingProxyType[str, str] = SCOPES,
         auto_error: bool = True,
     ) -> None:
         super().__init__(
             tokenUrl=tokenUrl,
+            scheme_name=scheme_name,
             scopes=scopes,  # type: ignore
             auto_error=auto_error,
         )

@@ -1,3 +1,4 @@
+from sqlalchemy import Integer
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -5,4 +6,4 @@ from sqlalchemy.orm import (
 
 
 class IntIdPkMixin:
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)

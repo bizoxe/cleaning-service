@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/app/Dockerfile
-      target: ${TARGET_ENV}
+      target: ${TARGET_ENV:-development}
     container_name: fastapi-cleaning-service
     restart: unless-stopped
     env_file:

@@ -53,7 +53,7 @@ ENTRYPOINT /docker-entrypoint_dev.sh $0 $@
 
 
 FROM python-base as production
-ENV FASTAPI_ENV=production
+ENV TARGET_ENV=production
 
 COPY --from=builder-base $VENV_PATH $VENV_PATH
 
