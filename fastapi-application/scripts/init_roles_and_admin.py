@@ -71,7 +71,6 @@ async def create_admin_and_editor() -> None:
         "email_verified": True,
         "password": hash_password(plaintext_password=ADMIN_PWD),
         "is_active": True,
-        "profile_exists": True,
         "role_id": 3,
     }
     editor_data = {
@@ -79,7 +78,6 @@ async def create_admin_and_editor() -> None:
         "email_verified": True,
         "password": hash_password(plaintext_password=EDITOR_PWD),
         "is_active": True,
-        "profile_exists": True,
         "role_id": 2,
     }
     async with async_session() as session:
