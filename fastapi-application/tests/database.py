@@ -1,16 +1,17 @@
-from typing import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    async_sessionmaker,
-    AsyncSession,
-    create_async_engine,
     AsyncConnection,
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
 )
+
 from alembic import (
-    config,
     command,
+    config,
 )
 
 
@@ -24,7 +25,10 @@ class DatabaseSessionManager:
         self._session_maker: async_sessionmaker[AsyncSession] | None = None
 
     def init(self, url: str) -> None:
-        self._async_engine = create_async_engine(url=url)
+        self._async_engine = create_async_engine(
+            url=url,
+            echo=False,
+        )
         self._session_maker = async_sessionmaker(
             bind=self._async_engine,
             autocommit=False,

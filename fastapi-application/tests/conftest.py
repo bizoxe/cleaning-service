@@ -1,21 +1,22 @@
-from typing import AsyncGenerator
 import asyncio
+from typing import AsyncGenerator
 
 import pytest
-from fastapi import FastAPI
 import pytest_asyncio
-from httpx import (
-    AsyncClient,
-    ASGITransport,
-)
 from asgi_lifespan import LifespanManager
+from fastapi import FastAPI
+from httpx import (
+    ASGITransport,
+    AsyncClient,
+)
 from pytest_postgresql import factories
 from pytest_postgresql.janitor import DatabaseJanitor
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
+from core.models import db_helper
 from server.create_fastapi_app import create_app
 from tests.database import session_manager
-from core.models import db_helper
-from core.config import settings
 
 
 class CustomEventLoopPolicy(asyncio.DefaultEventLoopPolicy):
@@ -30,7 +31,7 @@ def app() -> FastAPI:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(app) -> AsyncGenerator[AsyncClient, None]:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     async with LifespanManager(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(
@@ -45,8 +46,8 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 test_db = factories.postgresql_noproc(
     host=settings.db.postgres_host,
     port=settings.db.postgres_port,
-    user=settings.db.postgres_user,
-    password=settings.db.postgres_pwd,
+    user=settings.db.test_postgres_user,
+    password=settings.db.test_postgres_pwd,
     dbname="test_db",
 )
 
@@ -57,7 +58,10 @@ def event_loop_policy(request):
 
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
-async def connection_test(test_db, event_loop_policy):
+async def connection_test(
+    test_db,
+    event_loop_policy,
+) -> None:
     pg_host = test_db.host
     pg_port = test_db.port
     pg_user = test_db.user
@@ -72,9 +76,7 @@ async def connection_test(test_db, event_loop_policy):
         password=pg_password,
         version=version,
     ):
-        connection_str = (
-            f"postgresql+psycopg://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
-        )
+        connection_str = f"postgresql+psycopg://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
 
         session_manager.init(connection_str)
 
@@ -83,15 +85,15 @@ async def connection_test(test_db, event_loop_policy):
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def create_tables(connection_test) -> None:
+async def create_tables(connection_test: None) -> None:
     async with session_manager.connect() as connection:
         await session_manager.drop_all(connection)
         await session_manager.create_all(connection)
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def session_override(app, connection_test):
-    async def get_db_override():
+async def session_override(app: FastAPI, connection_test: None) -> None:
+    async def get_db_override() -> AsyncGenerator[AsyncSession, None]:
         async with session_manager.session() as session:
             yield session
 
