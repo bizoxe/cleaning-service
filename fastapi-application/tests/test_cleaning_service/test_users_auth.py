@@ -1,11 +1,18 @@
-from secrets import token_hex
+import re
+from secrets import (
+    token_hex,
+    token_urlsafe,
+)
+from unittest.mock import AsyncMock
 
 import pytest
+import pytest_asyncio
 from fastapi import (
     FastAPI,
     status,
 )
 from httpx import AsyncClient
+from pytest_mock import MockFixture
 
 from api.api_v1.users.jwt_helpers import create_refresh_token
 from api.api_v1.users.schemas import UserCreate
@@ -14,6 +21,8 @@ from auth.schemas import (
     UserAuthProfile,
     UserAuthSchema,
 )
+from utils.mailing.helpers import create_url_safe_token
+from utils.mailing.messages import send_verify_email
 
 pytestmark = pytest.mark.asyncio
 
@@ -30,6 +39,47 @@ def authorized_client_refresh_jwt(
     }
 
     return client
+
+
+@pytest.fixture
+def get_email_token_default() -> str:
+    return create_url_safe_token("fakeuser@gmail.com")
+
+
+@pytest.fixture
+def get_email_token() -> str:
+    return create_url_safe_token("dolgorukaya@gmail.com")
+
+
+def replace_link_token(
+    msg: str,
+    token: str,
+) -> str:
+    link = re.search('(?<=href=")(.*?)(?=")', msg)
+    link_without_token = link.group().split("/")[:-1]
+    new_link = f'{"/".join(link_without_token)}/{token}'
+
+    return new_link
+
+
+@pytest_asyncio.fixture(scope="function")
+async def mock_send_email(
+    mocker: MockFixture,
+    get_api_base_url: str,
+    get_email_token_default: str,
+) -> AsyncMock:
+    mocker.patch("utils.mailing.send_email.aiosmtplib.send")
+    mock_email_server = AsyncMock()
+    token = get_email_token_default
+    link = f"{get_api_base_url}api/v1/auth/verify-email/{token}"
+    msg_html = f"""
+        <h3>Confirm your email</h3>
+        <p>Please click this <a href="{link}">link</a> to confirm your email</p>
+        """
+    mock_email_server.message = msg_html
+    await send_verify_email("fakeuser@gmail.com")
+
+    return mock_email_server
 
 
 class TestUserRegistration:
@@ -361,4 +411,40 @@ class TestUserAuthSelfInfo:
             app.url_path_for("auth:user-auth-check-self-info"),
             headers={**client.headers, "Authorization": "Bearer"},
         )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestVerifyEmail:
+
+    async def test_verify_email(
+        self,
+        mock_send_email: AsyncMock,
+        authorized_client: AsyncClient,
+    ) -> None:
+        message = mock_send_email.message
+        link = re.search('(?<=href=")(.*?)(?=")', message)
+        response = await authorized_client.get(link.group())
+        resp_js = response.json()
+        assert resp_js["email"] == "fakeuser@gmail.com"
+        assert resp_js["email_verified"] is True
+
+    async def test_verify_email_user_not_found(
+        self,
+        mock_send_email: AsyncMock,
+        authorized_client: AsyncClient,
+        get_email_token: str,
+    ) -> None:
+        message = mock_send_email.message
+        new_link = replace_link_token(msg=message, token=get_email_token)
+        response = await authorized_client.get(new_link)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_verify_email_invalid_token(
+        self,
+        mock_send_email: AsyncMock,
+        authorized_client: AsyncClient,
+    ) -> None:
+        message = mock_send_email.message
+        new_link = replace_link_token(msg=message, token=token_urlsafe())
+        response = await authorized_client.get(new_link)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

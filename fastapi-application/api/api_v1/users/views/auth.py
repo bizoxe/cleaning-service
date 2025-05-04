@@ -28,6 +28,8 @@ from auth.schemas import (
 )
 from core.models import db_helper
 from crud.users import users_crud
+from utils.mailing.helpers import decode_url_safe_token
+from utils.mailing.messages import send_verify_email
 
 router = APIRouter(
     tags=["Auth"],
@@ -39,7 +41,7 @@ router = APIRouter(
     response_model=UserPublic,
     status_code=status.HTTP_201_CREATED,
     name="auth:register-new-user",
-    summary="new user registration",
+    summary="new user registration, sending a confirmation email to the user's email",
 )
 async def register_user_account(
     new_user: UserCreate,
@@ -51,6 +53,7 @@ async def register_user_account(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
+    await send_verify_email(created_user.email)
 
     return created_user
 
@@ -116,3 +119,41 @@ async def user_auth_check_self_info(
         return user_info
 
     return user_info
+
+
+@router.get(
+    "/verify-email/{token}",
+    response_model=UserPublic,
+    name="auth:verify-user-email",
+    summary="user email verification",
+)
+async def verify_user_email(
+    token: str,
+    session: Annotated[AsyncSession, Depends(db_helper.session_getter)],
+) -> UserPublic:
+    """
+    Verifies the token sent to the user by email.
+
+    If the token is valid, the verify_email field of the user object received
+    from the database is set to True, otherwise an exception will be raised.
+    """
+    if (token_data := decode_url_safe_token(token=token)) is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalid",
+        )
+
+    if not (
+        user := await users_crud.get_user_by_email(
+            session=session,
+            email=token_data.get("email"),
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    updated_user = await users_crud.update_verify_email_field(session=session, user_id=user.id)
+
+    return UserPublic(**updated_user.as_dict())

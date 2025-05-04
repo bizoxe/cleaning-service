@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import (
     BaseModel,
     EmailStr,
+    HttpUrl,
     PostgresDsn,
     computed_field,
 )
@@ -124,6 +125,14 @@ class PaginationConfig(BaseModel):
     secret_key: bytes
 
 
+class MailingConfig(BaseModel):
+    secret_key: str
+    salt: str
+    hostname: str
+    port: int
+    base_url: HttpUrl
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env.template", ".env"),
@@ -139,6 +148,7 @@ class Settings(BaseSettings):
     log_cfg: LoggingConfig = LoggingConfig()
     gunicorn: GunicornConfig = GunicornConfig()
     pagination: PaginationConfig
+    mailing_cfg: MailingConfig
 
 
 settings = Settings()

@@ -42,6 +42,7 @@ from auth.schemas import (
     UserAuthSchema,
 )
 from auth.utils.auth_utils import hash_password
+from core.config import settings
 from tests.database import session_manager
 
 
@@ -341,3 +342,8 @@ def change_offer_status(create_offer_in_db: OfferPublic) -> Callable[[str], Awai
         return OfferPublic(**updated_offer.as_dict())
 
     return _change_offer_status
+
+
+@pytest.fixture
+def get_api_base_url() -> str:
+    return settings.mailing_cfg.base_url

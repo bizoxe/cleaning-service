@@ -176,5 +176,27 @@ class UserCRUD(CRUDRepository):  # type: ignore
 
         return None
 
+    @staticmethod
+    async def update_verify_email_field(
+        session: AsyncSession,
+        user_id: UUID,
+    ) -> User:
+        """
+        Updates the verify_email field of the user object.
+        Args:
+            session: The database session.
+            user_id: User Identifier.
+
+        Returns:
+                The updated user object.
+        """
+        to_update = await session.scalar(
+            update(User).filter_by(id=user_id).returning(User).values(email_verified=True),
+        )
+        await session.flush()
+        await session.commit()
+
+        return to_update
+
 
 users_crud = UserCRUD(User)
