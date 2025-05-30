@@ -17,6 +17,11 @@ from utils.custom_logger.schemas import (
     ResponseSide,
 )
 
+PASS_ROUTES = {
+    "/openapi.json",
+    "/docs",
+}
+
 logger = logging.getLogger("main")
 
 
@@ -42,6 +47,8 @@ class LoggingMiddleware:
             )
             exc_obj = ex
         else:
+            if request.url.path in PASS_ROUTES:
+                return response
             chunks = []
             async for chunk in response.body_iterator:
                 chunks.append(chunk)
@@ -62,6 +69,7 @@ class LoggingMiddleware:
                 media_type=response.media_type,
                 background=task,
             )
+
         return response
 
     @staticmethod
